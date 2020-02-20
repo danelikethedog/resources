@@ -24,7 +24,7 @@ the device
 
 `$iothub/twin/PATCH/properties/desired/#`: for updates to the twin
 
-All request for the twin feature are done by publishing certain _requests_ to the
+All requests for the twin feature are done by publishing certain _requests_ to the
 hub from the device based on HTTP CRUD ops. The following are valid topics to send to:
 
 `$iothub/twin/GET/?$rid=<request id>`: to get the whole twin document
@@ -37,4 +37,21 @@ hub from the device based on HTTP CRUD ops. The following are valid topics to se
 ```
 where prop is some desired/reported property.
 
+### Device to Cloud
 
+### Cloud to Device
+```
+$iothub/twin/res/#
+```
+In place of the wildcard is some response code based on HTTP.
+- For an update to twin from the device, the response code would be a `204`. There will be a paremeter with the response id and the version of the updated prop.
+  - Should the response be parsed into it parts (version, request id, )
+
+```
+$iothub/twin/PATCH/properties/desired/#
+```
+
+### Twin Questions
+- Future Features
+  - Do we need twin array support out of the box
+  - CBOR support
