@@ -11,3 +11,9 @@ To check on env vars, can use a combo of env and grep. Example:
 ```bash
 env | grep "VCPKG_ROOT"
 ```
+
+Find text in directory
+```bash
+grep -rnw '/path/to/somewhere/' -e 'pattern'
+```
+
