@@ -1,9 +1,14 @@
 # VIM
 
 ## Normal Mode
+
 `i` for insert mode
 
-`d`
+`d` with motion deletes text that motions over
+
+`ciw` change inner word
+
+`cw` change word
 
 `x` deletes char under the cursor
 
@@ -27,118 +32,112 @@
 
 `Ctrl-T` to go back from definition
 
-Text Entry Commands (Used to start text entry)
+## Text Entry Commands (Used to start text entry)
 
-a Append text following current cursor position
+`a` Append text following current cursor position
 
-A Append text to the end of current line
+`A` Append text to the end of current line
 
-i Insert text before the current cursor position
+`i` Insert text before the current cursor position
 
-I Insert text at the beginning of the cursor line
+`I` Insert text at the beginning of the cursor line
 
-o Open up a new line following the current line and add text there
+`o` Open up a new line following the current line and add text there
 
-O Open up a new line in front of the current line and add text there
+`O` Open up a new line in front of the current line and add text there
+
+## Cursor Movement Commands
 
 The following commands are used only in the commands mode.
 
-Cursor Movement Commands
+`h` Moves the cursor one character to the left
 
-h Moves the cursor one character to the left
+`l` Moves the cursor one character to the right
 
-l Moves the cursor one character to the right
+`k` Moves the cursor up one line
 
-k Moves the cursor up one line
+`j` Moves the cursor down one line
 
-j Moves the cursor down one line
+`nG` or `:n` Cursor goes to the specified (n) line (ex. 10G goes to line 10)
 
-nG or :n Cursor goes to the specified (n) line
+`^F` (CTRl F) Forward screenful
 
-(ex. 10G goes to line 10)
+`^B` Backward screenful
 
-^F (CTRl F) Forward screenful
+`^f` One page forward
 
-^B Backward screenful
+`^b` One page backward
 
-^f One page forward
+`^U` Up half screenful
 
-^b One page backward
+`^D` Down half screenful
 
-^U Up half screenful
+`$` Move cursor to the end of current line
 
-^D Down half screenful
+`0` (zero) Move cursor to the beginning of current line
 
-$ Move cursor to the end of current line
+`w` Forward one word
 
-0 (zero) Move cursor to the beginning of current line
+`b` Backward one word
 
-w Forward one word
+## Exit Commands
 
-b Backward one word
+`:wq` Write file to disk and quit the editor
 
-Exit Commands
+`:q!` Quit (no warning)
 
-:wq Write file to disk and quit the editor
+`:q` Quit (a warning is printed if a modified file has not been saved)
 
-:q! Quit (no warning)
+`ZZ` Save workspace and quit the editor (same as :wq)
 
-:q Quit (a warning is printed if a modified file has not been saved)
+`:` 10,25 w temp
 
-ZZ Save workspace and quit the editor (same as :wq)
+`write` lines 10 through 25 into file named temp. Of course, other line numbers can be used. (Use :f to find out the line numbers you want.)
 
-: 10,25 w temp
+## Text Deletion Commands
 
-write lines 10 through 25 into file named temp. Of course, other line
+`x` Delete character
 
-numbers can be used. (Use :f to find out the line numbers you want.
+`dw` Delete word from cursor on
 
- 
+`db` Delete word backward
 
- Text Deletion Commands
+`dd` Delete line
 
- x Delete character
+`d$` Delete to end of line
 
- dw Delete word from cursor on
+`d^` (d caret, not CTRL d) Delete to beginning of line
 
- db Delete word backward
+## Yank (has most of the options of delete)-- VI's copy commmand
 
- dd Delete line
+`yy` yank current line
 
- d$ Delete to end of line
+`y$` yank to end of current line from cursor
 
- d^ (d caret, not CTRL d) Delete to beginning of line
+`yw` yank from cursor to end of current word
 
- Yank (has most of the options of delete)-- VI's copy commmand
+`5yy` yank, for example, 5 lines
 
- yy yank current line
+## Paste (used after delete or yank to recover lines.)
 
- y$ yank to end of current line from cursor
+`p` paste below cursor
 
- yw yank from cursor to end of current word
+`P` paste above cursor
 
- 5yy yank, for example, 5 lines
+`2p` paste from buffer 2 (there are 9)
 
- Paste (used after delete or yank to recover lines.)
+`u` Undo last change
 
- p paste below cursor
+`U` Restore line
 
- P paste above cursor
+`J` Join next line down to the end of the current line
 
- "2p paste from buffer 2 (there are 9)
+## File Manipulation Commands
 
- u Undo last change
+`:w` Write workspace to original file
 
- U Restore line
+`:w file` Write workspace to named file
 
- J Join next line down to the end of the current line
+`:e file` Start editing a new file
 
- File Manipulation Commands
-
- :w Write workspace to original file
-
- :w file Write workspace to named file
-
- :e file Start editing a new file
-
- :r file Read contents of a file to the workspace
+`:r file` Read contents of a file to the workspace
