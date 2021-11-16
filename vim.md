@@ -68,6 +68,10 @@ The following commands are used only in the commands mode.
 
 `^b` One page backward
 
+`<C-y>` Up one line (cursor same place)
+
+`<C-e>` Down one line (cursor same place)
+
 `^U` Up half screenful
 
 `^D` Down half screenful
