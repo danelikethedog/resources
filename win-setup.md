@@ -9,3 +9,7 @@
 - [Tera Term](https://osdn.net/projects/ttssh2/releases/)
 - [Windows OpenSSL](https://slproweb.com/products/Win32OpenSSL.html)
 - [ARM GCC](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads)
+- [CMake](https://cmake.org/download/)
+- [Azure IoT Device Explorer](https://github.com/Azure/azure-iot-explorer/releases)\
+- [Microsoft Powertoys](https://github.com/microsoft/PowerToys/releases)
+- [Microsoft Visual Studio](https://my.visualstudio.com/Benefits)
