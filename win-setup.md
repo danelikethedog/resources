@@ -8,3 +8,4 @@
 - [Microsoft Teams](https://www.microsoft.com/en-us/microsoft-teams/download-app)
 - [Tera Term](https://osdn.net/projects/ttssh2/releases/)
 - [Windows OpenSSL](https://slproweb.com/products/Win32OpenSSL.html)
+- [ARM GCC](https://developer.arm.com/tools-and-software/open-source-software/developer-tools/gnu-toolchain/gnu-rm/downloads)
