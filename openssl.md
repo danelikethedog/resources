@@ -18,6 +18,16 @@ You can also use the explicit hash alg to generate the hash:
 openssl <sha1><md5> <filename>
 ```
 
+## Verify Keys Match
+
+```bash
+# To get the public key of a cert
+openssl x509 -in cert -pubkey
+
+# To get the public key of a private key
+openssl ec -in key -pubout
+```
+
 ## Self Signed Cert
 
 ```bash
