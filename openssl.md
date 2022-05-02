@@ -87,8 +87,14 @@ openssl req -new -key device_ec_key.pem -out device_ec.csr -subj "/CN=myDevice1"
 openssl x509 -req -in device_ec.csr -CA i2_ec_cert.pem -CAkey i2_ec_key.pem -CAcreateserial -out device_ec_cert.pem -days 365 -sha256 -extensions client_auth -extfile ./x509_config.cfg
 ```
 
-## Verify CSR: 
+## Verify CSR
 
 ```bash
 openssl req -text -noout -in i1_ec.csr
+```
+
+## View Cert
+
+```bash
+openssl x509 -in <cert> -text -noout
 ```
