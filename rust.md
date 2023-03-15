@@ -8,6 +8,7 @@
 * If you would like to modify a referenced value, you must make it a `&mut` reference, which can only be done once in a scope.
 * Mut references may be in the same scope but once you reassign to another variable, the previous one becomes invalid.
 * We also cannot have a mutable reference while we have an immutable one to the same value.
+* Some types are auto-deref'd, so you don't need to use the `*` operator to deref them.
 
 ## Enums
 
@@ -63,7 +64,7 @@ fn parse_pos_nonzero(s: &str) -> Result<PositiveNonzeroInteger, ParsePosNonzeroE
 }
 ```
 
-# Traits
+## Traits
 
 They are very similar to `interfaces` in other languages.
 
@@ -84,3 +85,49 @@ pub fn notify<T: Summary>(item: &T) {
 ```
 
 Where we are saying `item` is a reference to a type which implements the `Summary` trait. The generic type `T` is "bound" by the `Summary` trait.
+
+### Derive
+
+* Comparison traits: Eq, PartialEq, Ord, PartialOrd.
+  * PartialEq might be a book with different formats. The `type` field is inside the struct, but you can make it PartialEq to the type by saying that it is `PartialEq<BookFormat>` where the inner type is compared to the enum type.
+* Clone, to create T from &T via a copy.
+* Copy, to give a type 'copy semantics' instead of 'move semantics'.
+* Hash, to compute a hash from &T.
+* Default, to create an empty instance of a data type.
+* Debug, to format a value using the {:?} formatter.
+
+## Lifetime Annotations
+
+* Lifetime syntax is about connecting the lifetimes of various parameters and return values of functions.
+* Lifetime annotations are used to tell the compiler how long a reference is valid for.
+* The compiler will try to infer the lifetime of a reference, but it can't always do it.
+* Add the lifetime annotation to the function signature, and then to the reference itself, along with the return value.
+
+## Message Passing
+
+* Message passing is a way to pass data between threads.
+* The `mpsc` module is used for message passing.
+* [Link to doc](https://doc.rust-lang.org/stable/book/ch16-02-message-passing.html)
+
+## Async/Await
+
+* The code is not run until you `.await` it.
+* The lifetime of the Future is the same as its parameters. If you have some parameters which will go out of scope relative to your async call, you can wrap the parameters and async call in an async block.
+
+```rust
+fn bad() -> impl Future<Output = u8> {
+    let x = 5;
+    borrow_x(&x) // ERROR: `x` does not live long enough
+}
+
+fn good() -> impl Future<Output = u8> {
+    async {
+        let x = 5;
+        borrow_x(&x).await
+    }
+}
+```
+
+* You should not use types which are not `Send` in async blocks. This is because the async block is run on a separate thread, and the types must be able to be sent to that thread. This means you also shouldn't use types which are not `Sync` in async blocks (references).
+
+* Pinning is needed to make sure that the future is not moved around in memory. This is because the future is stored on the heap, and the compiler can't know if the future will be moved around in memory. If pointers move location from inside that struct, you can have issues.
