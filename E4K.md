@@ -1,12 +1,20 @@
 # E4K
 
+## Parts to the Broker
+
+* Operator
+* Connector
+* Auth
+* Bridge
+* dMQTT
+
 ## Running the Broker
 
 You can run the built broker within an image using `cargo`, `docker`, `k3d`, and `helm`.
 
 ```bash
 # Create cluster
-k3d cluster create test
+k3d cluster create test -p 1883:31883
 
 # Build
 cargo build
@@ -26,10 +34,17 @@ helm install -f distrib/kubernetes/dmqtt/values.dev.yaml edgy ./distrib/kubernet
 kubectl get pods
 
 # Monitor logs
-kubectl logs azedge-dmqtt-frontend-5dd9d4959-x6pdq
+kubectl logs azedge-dmqtt-authentication-0
+
+# Get logs for all pods and save them to a file
+kubectl get pods | grep azedge | awk '{print $1}' | xargs -I {} sh -c 'kubectl logs {} > {}.log'
 
 # Send MQTT messages with Mosquitto CLI
 mosquitto_pub -t test -d -u "client1" -P "password"  -h 127.0.0.1 -m "hi" --repeat 10 --repeat-delay 1
+
+# Delete cluster
+k3d cluster delete test
+
 ```
 
 
