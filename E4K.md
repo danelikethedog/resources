@@ -3,10 +3,15 @@
 ## Parts to the Broker
 
 * Operator
+  * Orchestrates the broker
 * Connector
+  * Connects the broker to the cloud
 * Auth
+  * Authenticates the broker
 * Bridge
+  * Bridges the broker to other brokers
 * dMQTT
+  * The broker itself
 
 ## Running the Broker
 
@@ -36,7 +41,7 @@ kubectl get pods
 # Monitor logs
 kubectl logs azedge-dmqtt-authentication-0
 
-# Get logs for all pods and save them to a file
+# Get logs for all pods and save them to files
 kubectl get pods | grep azedge | awk '{print $1}' | xargs -I {} sh -c 'kubectl logs {} > {}.log'
 
 # Send MQTT messages with Mosquitto CLI
@@ -48,10 +53,20 @@ k3d cluster delete test
 ```
 
 
+From Arnav
+
 ```bash
 for d in operatord authd; do make "MANIFEST=./dmqtt/$d/Cargo.toml" STRIP=1 image TAGS='{{repository}}'; done; make MANIFEST=./dmqtt/dmqttd/Cargo.toml RELEASE=1 STRIP=1 image TAGS='{{repository}}'
 
 k3d cluster delete; k3d cluster create --volume /dev/mapper:/dev/mapper -p '1883:31883'; k3d image import dmqtt-pod dmqtt-operator dmqtt-authentication
 
 helm install -f distrib/kubernetes/dmqtt/values.dev.yaml edgy ./distrib/kubernetes/dmqtt
+```
+
+Test commands
+
+```bash
+date +"%m-%d-%Y-%T" | xargs -I {} sh -c 'mkdir {} && cd {}'
+date +"%m-%d-%Y-%T" | mkdir `date +"%m-%d-%Y-%T`
+date +"%m-%d-%Y-%T"
 ```
