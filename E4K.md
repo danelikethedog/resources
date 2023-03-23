@@ -42,7 +42,10 @@ kubectl get pods
 kubectl logs azedge-dmqtt-authentication-0
 
 # Send MQTT messages with Mosquitto CLI
-mosquitto_pub -t test -d -u "client1" -P "password" -h 127.0.0.1 -m "hi" --repeat 10 --repeat-delay 1 --will-payload "goodbye" --will-qos 1 --will-retain --will-topic "/dane/will"
+mosquitto_pub -t test -d -u "client1" -P "password" -h 127.0.0.1 -m "hi" --repeat 10 --repeat-delay 1 --will-payload "goodbye" --will-qos 1 --will-retain --will-topic "dane/will"
+
+# Create client to subscribe to the will topic
+mosquitto_sub -t dane/will -d -u "client2" -P "password2" -h 127.0.0.1
 
 # Get logs for all pods and save them to files
 kubectl get pods | grep azedge | awk '{print $1}' | xargs -I {} sh -c 'kubectl logs {} > {}.log'
