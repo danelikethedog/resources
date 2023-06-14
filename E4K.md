@@ -33,7 +33,7 @@ make image "MANIFEST=./dmqtt/authd/Cargo.toml" STRIP=1 TAGS='dmqtt-authenticatio
 k3d image import dmqtt-pod dmqtt-operator dmqtt-authentication -c test
 
 # Deploy to the cluster (using dev so that we can use local versions)
-helm install -f distrib/helm/E4K/charts/e4kdmqtt/values.dev.yaml edgy ./distrib/helm/E4K/charts/e4kdmqtt
+helm install -f distrib/helm/E4K_CRD/charts/e4kdmqtt/values.dev.yaml edgy ./distrib/helm/E4K_CRD/charts/e4kdmqtt && kubectl apply -f ./distrib/helm/E4K_CRD/deployment.dev.yml
 
 # Monitor pods until they're ready.
 watch kubectl get pods
@@ -41,8 +41,14 @@ watch kubectl get pods
 # Send MQTT messages with Mosquitto CLI
 mosquitto_pub -t dane/will -d -u "client1" -P "password" -i "publisher0" -h 127.0.0.1 -m "hello1" --repeat 10 --repeat-delay 1 --will-payload "goodbye" --will-qos 1 --will-retain --will-topic "dane/will"
 
+# Send message without authentication
+mosquitto_pub -t dane/will -d -i "publisher0" -h 127.0.0.1 -m "hello1" --repeat 10 --repeat-delay 1 --will-payload "goodbye" --will-qos 1 --will-retain --will-topic "dane/will"
+
 # Create client to subscribe to the will topic
 mosquitto_sub -t dane/will -d -u "client2" -i "subscriber0" -P "password2" -h 127.0.0.1
+
+# Create client to sub without auth
+mosquitto_sub -t dane/will -d -i "subscriber0" -h 127.0.0.1
 
 # Get logs for all pods and save them to files
 kubectl get pods | grep azedge | awk '{print $1}' | xargs -I {} sh -c 'kubectl logs {} > {}.log'

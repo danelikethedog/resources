@@ -27,3 +27,11 @@
 
 * If the Will Flag is set to 0, the Will Retain MUST be set to 0 (0x00) [MQTT-3.1.2-15].
 * If the Will Flag is set to 1, the Will Retain can be set to 0 (0x00) or 1 (0x01) [MQTT-3.1.2-16].
+
+## Cross Chain
+
+SessionCleanup will only have the `bool` which dictates whether a message will be sent or not.
+
+The inner::SessionCleanup can have the
+
+The inner::CrossChainConnect will have the Will Publication 
