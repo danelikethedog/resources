@@ -50,12 +50,6 @@ mosquitto_sub -t dane/will -d -u "client2" -i "subscriber0" -P "password2" -h 12
 # Create client to sub without auth
 mosquitto_sub -t dane/will -d -i "subscriber0" -h 127.0.0.1
 
-# Get logs for all pods and save them to files
-kubectl get pods | grep azedge | awk '{print $1}' | xargs -I {} sh -c 'kubectl logs {} > {}.log'
-
-# Get logs for crashed pods and save them to files
-kubectl get pods | grep azedge | awk '{print $1}' | xargs -I {} sh -c 'kubectl logs --previous {} > {}-crash.log'
-
 # Get support bundle
 kubectl azedge-e4k support-bundle --namespaces default
 
@@ -70,23 +64,4 @@ mosquitto_pub -q 1 -t "\$store/pet" -i "publisher0" -u "client1" -P "password" -
  # Message can be anything (ignored)
 mosquitto_pub -q 1 -t "\$store/pet" -i "publisher0" -u "client1" -P "password" -V mqttv5 -d -m "" -D PUBLISH response-topic "response"  -D PUBLISH user-property OPERATION 'GET'
 
-```
-
-
-From Arnav
-
-```bash
-for d in operatord authd; do make "MANIFEST=./dmqtt/$d/Cargo.toml" STRIP=1 image TAGS='{{repository}}'; done; make MANIFEST=./dmqtt/dmqttd/Cargo.toml RELEASE=1 STRIP=1 image TAGS='{{repository}}'
-
-k3d cluster delete; k3d cluster create --volume /dev/mapper:/dev/mapper -p '1883:31883'; k3d image import dmqtt-pod dmqtt-operator dmqtt-authentication
-
-helm install -f distrib/helm/E4K/charts/e4kdmqtt/values.dev.yaml edgy ./distrib/helm/E4K/charts/e4kdmqtt
-```
-
-Test commands
-
-```bash
-date +"%m-%d-%Y-%T" | xargs -I {} sh -c 'mkdir {} && cd {}'
-date +"%m-%d-%Y-%T" | mkdir `date +"%m-%d-%Y-%T`
-date +"%m-%d-%Y-%T"
 ```
