@@ -167,6 +167,8 @@ make
 
 ## Install E4K
 
+### deployment.yaml
+
 Create the following deployment file to deploy the E4K broker to the nodes:
 
 ```yaml
@@ -239,23 +241,38 @@ spec:
   enableSelfCheck: false
 ```
 
+### Deploy
+
 ```bash
 helm package E4K_CRD && helm install e4k az-e4k-0.3.0-dev-crd.tgz  -f E4K_CRD/values.yaml && kubectl apply -f E4K_CRD/deployment.yaml
+```
+
+## Deleting the CRDs for a redeploy
+
+```bash
+helm delete e4k ; kubectl patch brokers/dmqttbroker -p '{"metadata":{"finalizers":[]}}' --type=merge ; kubectl delete crd  brokers.az-edge.com brokerauthentications.az-edge.com  brokerauthorizations.az-edge.com brokerdiagnostics.az-edge.com brokerlisteners.az-edge.com  brokers.az-edge.com diagnosticservices.az-edge.com mqttbridgetopicmaps.az-edge.com mqttbridgeconnectors.az-edge.com
 ```
 
 ## Situations to Test
 
 ```bash
+# Get frontend IP to use for testing
+export FRONTEND_IP=$(kubectl get services | grep frontend | awk '{print $3}')
+```
+
+```bash
 # Backlog of messages to sustained session
 
 # Connect with persistent session
-mosquitto_sub -q 1 -t "#" -i sub_2 -d -V mqttv5 -h 10.43.69.133 -c
+mosquitto_sub -q 1 -t "#" -i sub_2 -d -V mqttv5 -h $FRONTEND_IP -c
 
 # Send a bunch of messages, which should eventually get rejected
-mosquitto_pub -t test -d -h 10.43.69.133 -q 1 -m <1 Kb payload> --repeat 1000000 -V mqttv5
+mosquitto_pub -t test -d -h $FRONTEND_IP -q 1 -m <1 Kb payload> --repeat 1000000 -V mqttv5
 
-mosquitto_pub -t test -d -h 10.43.69.133 -q 1 -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --repeat 1000000 -V mqttv5
+# Dummy subscriber which should get rejected
+mosquitto_sub -q 1 -t "test" -i dummy -d -V mqttv5 -h $FRONTEND_IP
 
+mosquitto_pub -t test -d -h $FRONTEND_IP -q 1 -i pubber -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --repeat 1000000 -V mqttv5 -c
 ```
 
 ```
@@ -341,10 +358,4 @@ spec:
   enableTracing: true
   logLevel: debug,hyper=off,kube_client=off,tower=off,conhash=off,h2=off
   enableSelfCheck: false
-```
-
-### Deleting the CRDs for a redeploy
-
-```bash
-helm delete e4k ; kubectl patch brokers/dmqttbroker -p '{"metadata":{"finalizers":[]}}' --type=merge ; kubectl delete crd  brokers.az-edge.com brokerauthentications.az-edge.com  brokerauthorizations.az-edge.com brokerdiagnostics.az-edge.com brokerlisteners.az-edge.com  brokers.az-edge.com diagnosticservices.az-edge.com mqttbridgetopicmaps.az-edge.com mqttbridgeconnectors.az-edge.com
 ```
