@@ -8,10 +8,15 @@ Create 5 VMs with the following configuration:
 
 ## Connecting to Clusters
 
+Make sure you have the Azure CLI installed and are logged in.
+
+```bash
+
 Create the following two files, while connected to the MSFT VPN.
 
 ```powershell
 # Add-VpnRoute.ps1
+
 param(
   [parameter(mandatory = $true)]
   [string]$VmName,
@@ -85,7 +90,6 @@ This should add the necessary networking to allow your local machine to connect 
 Locally, you can create a `~/.ssh/config` file with the following:
 
 ```
-# Read more about SSH config files: https://linux.die.net/man/5/ssh_config
 Host stress-1
     HostName 74.123.123.138
     User azureuser
@@ -121,7 +125,7 @@ ssh azureuser@stress-1 -F ~/.ssh/config
 ## Prereqs
 
 ```bash
-sudo apt install build-essential erlang cmake libatomic1 make mosquitto
+sudo apt install build-essential erlang cmake libatomic1 make mosquitto mosquitto-clients
 ```
 
 ## Installing K3S
@@ -160,6 +164,105 @@ git clone https://github.com/emqx/emqtt-bench.git
 cd emqtt-bench
 make
 ```
+
+## Install E4K
+
+Create the following deployment file to deploy the E4K broker to the nodes:
+
+```yaml
+# deployment.yaml
+apiVersion: az-edge.com/v1alpha2
+kind: Broker
+metadata:
+  name: "dmqttbroker"
+  namespace: default
+spec:
+  mode: distributed
+  healthManagerImage:
+    pullPolicy: Always
+    repository: edgebuilds.azurecr.io/dmqtt-operator
+    tag: edge
+  brokerImage:
+    pullPolicy: Always
+    repository: edgebuilds.azurecr.io/dmqtt-pod
+    tag: edge
+  authImage:
+    pullPolicy: Always
+    repository: edgebuilds.azurecr.io/dmqtt-authentication
+    tag: edge
+  cardinality:
+    frontend:
+      replicas: 3
+      temporaryResourceLimits:
+        maxInflightMessages: 1000
+        maxInflightPatches: 1000
+        maxInflightPatchesPerClient: 1
+        maxMessageExpirySecs: 3600
+        maxQueuedMessages: 1000000000
+        maxQueuedQos0Messages: 2000
+        maxSessionExpirySecs: 3600
+    backendChain:
+      replicas: 2
+      chainCount: 6
+      temporaryResourceLimits:
+        maxInflightMessages: 1000
+        maxInflightPatches: 1000
+        maxInflightPatchesPerClient: 1
+        maxMessageExpirySecs: 3600
+        maxQueuedMessages: 1000000000
+        maxQueuedQos0Messages: 2000
+        maxSessionExpirySecs: 3600
+---
+apiVersion: az-edge.com/v1alpha2
+kind: BrokerListener
+metadata:
+  name: "e4klistener"
+  namespace: default
+spec:
+  brokerRef: "dmqttbroker"
+  serviceType: loadBalancer
+  authenticationEnabled: false
+  authorizationEnabled: false
+  port: 1883
+---
+apiVersion: az-edge.com/v1alpha2
+kind: BrokerDiagnostic
+metadata:
+  name: "my-diag"
+  namespace: default
+spec:
+  brokerRef: "dmqttbroker"
+  diagnosticServiceEndpoint: azedge-diagnostics-service:9700
+  enableMetrics: true
+  enableTracing: true
+  logLevel: debug,hyper=off,kube_client=off,tower=off,conhash=off,h2=off
+  enableSelfCheck: false
+```
+
+```bash
+helm package E4K_CRD && helm install e4k az-e4k-0.3.0-dev-crd.tgz  -f E4K_CRD/values.yaml && kubectl apply -f E4K_CRD/deployment.yaml
+```
+
+## Situations to Test
+
+```bash
+# Backlog of messages to sustained session
+
+# Connect with persistent session
+mosquitto_sub -q 1 -t "#" -i sub_2 -d -V mqttv5 -h 10.43.69.133 -c
+
+# Send a bunch of messages, which should eventually get rejected
+mosquitto_pub -t test -d -h 10.43.69.133 -q 1 -m <1 Kb payload> --repeat 1000000 -V mqttv5
+
+mosquitto_pub -t test -d -h 10.43.69.133 -q 1 -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --repeat 1000000 -V mqttv5
+
+```
+
+```
+# 1KB payload
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+```
+
 
 
 
