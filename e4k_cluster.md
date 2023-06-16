@@ -8,6 +8,8 @@ Create 5 VMs with the following configuration:
 
 ## Connecting to Clusters
 
+Create the following two files, while connected to the MSFT VPN.
+
 ```powershell
 # Add-VpnRoute.ps1
 param(
@@ -43,7 +45,6 @@ if (-not $interface) {
 
 Write-Host "Adding destination '$destination' to MSFTVPN interface '$interface'..."
 route add $destination $interface
-
 ```
 
 ```powershell
@@ -71,6 +72,57 @@ az account set --subscription iot-edge-sublib-003
 #ssh -i azureKey.pem azureuser@20.127.146.229
 ```
 
+Run the following to connect to the VMs:
+
+```powershell
+. .\install.ps1
+```
+
+This should add the necessary networking to allow your local machine to connect to the VMs.
+
+## Local SSH
+
+Locally, you can create a `~/.ssh/config` file with the following:
+
+```
+# Read more about SSH config files: https://linux.die.net/man/5/ssh_config
+Host stress-1
+    HostName 74.123.123.138
+    User azureuser
+    IdentityFile /home/dwalton/keys/stress-1_key.pem
+
+Host stress-2
+    HostName 74.123.122.97
+    User azureuser
+    IdentityFile /home/dwalton/keys/stress-2_key.pem
+
+Host stress-3
+    HostName 74.123.122.216
+    User azureuser
+    IdentityFile /home/dwalton/keys/stress-3_key.pem
+
+Host stress-4
+    HostName 74.123.123.28
+    User azureuser
+    IdentityFile /home/dwalton/keys/stress-4_key.pem
+
+Host stress-5
+    HostName 74.123.123.29
+    User azureuser
+    IdentityFile /home/dwalton/keys/stress-5_key.pem
+```
+
+Your `ssh` command would be something like the following:
+
+```bash
+ssh azureuser@stress-1 -F ~/.ssh/config
+```
+
+## Prereqs
+
+```bash
+sudo apt install build-essential erlang cmake libatomic1 make mosquitto
+```
 
 ## Installing K3S
 
@@ -82,8 +134,114 @@ cd ~/.kube
 touch config
 sudo k3s kubectl config view --raw > config
 chmod 600 config
-
+# You can add this to your .bashrc so that each ssh session has the correct config
 export KUBECONFIG=~/.kube/config
 ```
 
+Run the following on the master node (first VM):
 
+```bash
+curl -sfL https://get.k3s.io | sh -
+
+# Get the token from here for the next step (might need sudo)
+cat /var/lib/rancher/k3s/server/node-token
+```
+
+On each auxiliary node, run the following, replacing the items in brackets with the values from the master node:
+
+```bash
+curl -sfL https://get.k3s.io | K3S_URL=https://<myserver-local-ip>:6443 K3S_TOKEN=<mynodetoken> sh -
+```
+
+## Install emqx
+
+```bash
+git clone https://github.com/emqx/emqtt-bench.git
+cd emqtt-bench
+make
+```
+
+
+
+## My Personal Items
+
+```bash
+curl -sfL https://get.k3s.io | K3S_URL=https://10.0.0.4:6443 K3S_TOKEN="K10f9e9aa4834d2970ec6c7e7d04d8962e85bed0f410ecfc6df825d5f93da2a7d9b::server:bc36674877fc50437d481d678aec36ef" sh -
+```
+
+Create `deployment.yaml` in `distrib/kube
+
+```yaml
+apiVersion: az-edge.com/v1alpha2
+kind: Broker
+metadata:
+  name: "dmqttbroker"
+  namespace: default
+spec:
+  mode: distributed
+  healthManagerImage:
+    pullPolicy: Always
+    repository: edgebuilds.azurecr.io/dmqtt-operator
+    tag: edge
+  brokerImage:
+    pullPolicy: Always
+    repository: edgebuilds.azurecr.io/dmqtt-pod
+    tag: edge
+  authImage:
+    pullPolicy: Always
+    repository: edgebuilds.azurecr.io/dmqtt-authentication
+    tag: edge
+  cardinality:
+    frontend:
+      replicas: 5
+      temporaryResourceLimits:
+        maxInflightMessages: 1000
+        maxInflightPatches: 1000
+        maxInflightPatchesPerClient: 1
+        maxMessageExpirySecs: 3600
+        maxQueuedMessages: 1000000000
+        maxQueuedQos0Messages: 2000
+        maxSessionExpirySecs: 3600
+    backendChain:
+      replicas: 2
+      chainCount: 5
+      temporaryResourceLimits:
+        maxInflightMessages: 1000
+        maxInflightPatches: 1000
+        maxInflightPatchesPerClient: 1
+        maxMessageExpirySecs: 3600
+        maxQueuedMessages: 1000000000
+        maxQueuedQos0Messages: 2000
+        maxSessionExpirySecs: 3600
+---
+apiVersion: az-edge.com/v1alpha2
+kind: BrokerListener
+metadata:
+  name: "e4klistener"
+  namespace: default
+spec:
+  brokerRef: "dmqttbroker"
+  serviceType: loadBalancer
+  authenticationEnabled: false
+  authorizationEnabled: false
+  port: 1883
+---
+apiVersion: az-edge.com/v1alpha2
+kind: BrokerDiagnostic
+metadata:
+  name: "my-diag"
+  namespace: default
+spec:
+  brokerRef: "dmqttbroker"
+  diagnosticServiceEndpoint: azedge-diagnostics-service:9700
+  enableMetrics: true
+  enableTracing: true
+  logLevel: debug,hyper=off,kube_client=off,tower=off,conhash=off,h2=off
+  enableSelfCheck: false
+```
+
+### Deleting the CRDs for a redeploy
+
+```bash
+helm delete e4k ; kubectl patch brokers/dmqttbroker -p '{"metadata":{"finalizers":[]}}' --type=merge ; kubectl delete crd  brokers.az-edge.com brokerauthentications.az-edge.com  brokerauthorizations.az-edge.com brokerdiagnostics.az-edge.com brokerlisteners.az-edge.com  brokers.az-edge.com diagnosticservices.az-edge.com mqttbridgetopicmaps.az-edge.com mqttbridgeconnectors.az-edge.com
+```
