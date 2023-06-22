@@ -165,6 +165,20 @@ cd emqtt-bench
 make
 ```
 
+## (Optional) Create your own ACR
+
+You can create your own container registry to store your images. This is useful if you want to build your own images and push them to your own registry.
+
+Create the container registry on Azure and get your admin username and password.
+
+```bash
+docker login <username>
+# Enter your password
+
+# Then enable anonymous pull access
+az acr update --name <acr-repo> --anonymous-pull-enabled
+```
+
 ## Install E4K
 
 ### deployment.yaml
@@ -244,7 +258,21 @@ spec:
 ### Deploy
 
 ```bash
-helm package E4K_CRD && helm install e4k az-e4k-0.3.0-dev-crd.tgz  -f E4K_CRD/values.yaml && kubectl apply -f E4K_CRD/deployment.yaml
+helm package E4K_CRD && helm install e4k az-e4k-0.3.0-dev-crd.tgz -f E4K_CRD/values.yaml && kubectl apply -f E4K_CRD/deployment.yaml
+```
+
+## Push local containers to registry
+
+```bash
+clear; for d in operatord authd; do make "MANIFEST=./dmqtt/$d/Cargo.toml" STRIP=1 image TAGS='{{repository}}'; done; make MANIFEST=./dmqtt/dmqttd/Cargo.toml RELEASE=1 STRIP=1 image TAGS='{{repository}}'
+
+docker tag dmqtt-operator dwaltonacr.azurecr.io/dmqtt-operator:wip
+docker tag dmqtt-authentication dwaltonacr.azurecr.io/dmqtt-authentication:wip
+docker tag dmqtt-pod dwaltonacr.azurecr.io/dmqtt-pod:wip
+
+docker push dwaltonacr.azurecr.io/dmqtt-operator:wip
+docker push dwaltonacr.azurecr.io/dmqtt-authentication:wip
+docker push dwaltonacr.azurecr.io/dmqtt-pod:wip
 ```
 
 ## Deleting the CRDs for a redeploy
@@ -258,9 +286,7 @@ helm delete e4k ; kubectl patch brokers/dmqttbroker -p '{"metadata":{"finalizers
 ```bash
 # Get frontend IP to use for testing
 export FRONTEND_IP=$(kubectl get services | grep frontend | awk '{print $3}')
-```
 
-```bash
 # Backlog of messages to sustained session
 
 # Connect with persistent session
@@ -284,6 +310,40 @@ aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 
 ```bash
 scp -F ~/keys/config dwalton@stress-1:~/bundle.zip .
+```
+
+## Deploying with certain affinity
+
+### Creating labels for nodes
+
+```bash
+kubectl label nodes stress-1 nodeid=stress-1
+kubectl label nodes stress-2 nodeid=stress-2
+kubectl label nodes stress-3 nodeid=stress-3
+kubectl label nodes stress-4 nodeid=stress-4
+kubectl label nodes stress-5 nodeid=stress-5
+```
+
+You can then use the Affinity in Rust to create an affinity option similar to the following:
+
+```rust
+affinity: Some(Affinity {
+  node_affinity: Some(NodeAffinity {
+      preferred_during_scheduling_ignored_during_execution: None,
+      required_during_scheduling_ignored_during_execution: Some(NodeSelector {
+          node_selector_terms: vec![NodeSelectorTerm {
+              match_expressions: Some(vec![NodeSelectorRequirement {
+                  key: "nodeid".to_string(),
+                  operator: "In".to_string(),
+                  values: Some(vec!["stress-1".to_string()]),
+              }]),
+              match_fields: None,
+          }],
+      }),
+  }),
+  pod_affinity: None,
+  pod_anti_affinity: None,
+}),
 ```
 
 ## My Personal Items
