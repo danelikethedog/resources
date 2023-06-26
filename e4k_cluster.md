@@ -4,7 +4,7 @@
 
 Create 5 VMs with the following configuration:
 
-![VM Configuration](imgs/vm.png)
+![VM Configuration](imgs/vms.png)
 
 ## Connecting to Clusters
 
