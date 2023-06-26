@@ -10,8 +10,6 @@ Create 5 VMs with the following configuration:
 
 Make sure you have the Azure CLI installed and are logged in.
 
-```bash
-
 Create the following two files, while connected to the MSFT VPN.
 
 ```powershell
@@ -28,7 +26,6 @@ $Ips = @{
 foreach ($ip in $Ips.Values) {
   route add $ip mask 255.255.255.255 $interface
 }
-
 ```
 
 Run the following as admin WHILE CONNECTED TO MSFTVPN to connect to the VMs via SSH:
@@ -76,7 +73,7 @@ Your `ssh` command would be something like the following:
 ssh azureuser@stress-1 -F ~/.ssh/config
 ```
 
-## Prereqs
+## Prereqs for Azure VMs
 
 ```bash
 sudo apt install build-essential erlang cmake libatomic1 make mosquitto mosquitto-clients
