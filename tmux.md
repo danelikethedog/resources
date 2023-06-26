@@ -39,7 +39,7 @@ to see all the shortcuts keys in tmux simply use the `bind-key ?` in my case tha
     s  list sessions
     $  name session
 
-## <a name="WindowsTabs"></a>Windows (tabs)
+## Windows (tabs)
 
     c  create window
     w  list windows
@@ -49,7 +49,7 @@ to see all the shortcuts keys in tmux simply use the `bind-key ?` in my case tha
     ,  name window
     &  kill window
 
-## <a name="PanesSplits"></a>Panes (splits) 
+## Panes (splits) 
 
     %  vertical split
     "  horizontal split
@@ -65,7 +65,7 @@ to see all the shortcuts keys in tmux simply use the `bind-key ?` in my case tha
     <prefix> } (Move the current pane right)
     <prefix> z toggle pane zoom
 
-## <a name="syncPanes"></a>Sync Panes 
+## Sync Panes
 
 You can do this by switching to the appropriate window, typing your Tmux prefix (commonly Ctrl-B or Ctrl-A) and then a colon to bring up a Tmux command line, and typing:
 
@@ -92,9 +92,9 @@ You can also resize panes if you don’t like the layout defaults. I personally 
     PREFIX : resize-pane -t -L 20 (Resizes the pane with the id of 2 left by 20 cells)
                                             
                                                 
-## Copy mode:
+## Copy mode
 
-Pressing PREFIX [ places us in Copy mode. We can then use our movement keys to move our cursor around the screen. By default, the arrow keys work. we set our configuration file to use Vim keys for moving between windows and resizing panes so we wouldn’t have to take our hands off the home row. tmux has a vi mode for working with the buffer as well. To enable it, add this line to .tmux.conf:
+Pressing PREFIX `[` places us in Copy mode. We can then use our movement keys to move our cursor around the screen. By default, the arrow keys work. we set our configuration file to use Vim keys for moving between windows and resizing panes so we wouldn’t have to take our hands off the home row. tmux has a vi mode for working with the buffer as well. To enable it, add this line to .tmux.conf:
 
     setw -g mode-keys vi
 

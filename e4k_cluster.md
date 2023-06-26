@@ -15,69 +15,23 @@ Make sure you have the Azure CLI installed and are logged in.
 Create the following two files, while connected to the MSFT VPN.
 
 ```powershell
-# Add-VpnRoute.ps1
-
-param(
-  [parameter(mandatory = $true)]
-  [string]$VmName,
-  [parameter()]
-  [string]$AzureSubscription
-)
-
-if (-not [bool](Get-Command -ErrorAction SilentlyContinue az)) {
-  Write-Error "Azure CLI (az) not found. Please install it and run 'az login' before using this script"
-  return
-}
-
-Write-Host "**Remember to run 'az login' first!"
-
-$args = @('--name', $VmName)
-if ($AzureSubscription) {
-  $args += '--subscription', $AzureSubscription
-}
-
-$destination = az vm list-ip-addresses @args -o tsv --query "[0].virtualMachine.network.publicIpAddresses[0].ipAddress"
-if (-not $destination) {
-  Write-Error "Couldn't find the public IP address for VM '$VmName' in subscription '$AzureSubscription'"
-  return;
-}
-
-$interface = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias MSFTVPN-Manual | foreach { $_.IPAddress }
-if (-not $interface) {
-  Write-Error "Couldn't find a local network interface named 'MSFTVPN'"
-  return;
-}
-
-Write-Host "Adding destination '$destination' to MSFTVPN interface '$interface'..."
-route add $destination $interface
-```
-
-```powershell
 # install.ps1
+$interface = Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias MSFTVPN-Manual | ForEach-Object { $_.IPAddress }
+$Ips = @{
+  "stress-1"        = "74.235.123.138";
+  "stress-2"        = "74.235.122.97"; 
+  "stress-3"        = "74.235.122.216";
+  "stress-4"        = "74.235.123.28";
+  "stress-5"        = "20.42.118.5";
+  "stress-client"   = "20.42.105.206";
+}
+foreach ($ip in $Ips.Values) {
+  route add $ip mask 255.255.255.255 $interface
+}
 
-az account clear
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-az login
-
-az account set --subscription iot-edge-sublib-003
-
-. .\Add-VpnRoute.ps1 stress-1 iot-edge-sublib-003
-#ssh -i azureKey.pem azureuser@20.127.195.100
-
-. .\Add-VpnRoute.ps1 stress-2 iot-edge-sublib-003
-#ssh -i azureKey.pem azureuser@20.127.148.26
-
-. .\Add-VpnRoute.ps1 stress-3 iot-edge-sublib-003
-#ssh -i azureKey.pem azureuser@20.127.144.89
-
-. .\Add-VpnRoute.ps1 stress-4 iot-edge-sublib-003
-#ssh -i azureKey.pem azureuser@20.127.145.182
-
-. .\Add-VpnRoute.ps1 stress-5 iot-edge-sublib-003
-#ssh -i azureKey.pem azureuser@20.127.146.229
 ```
 
-Run the following to connect to the VMs:
+Run the following as admin WHILE CONNECTED TO MSFTVPN to connect to the VMs via SSH:
 
 ```powershell
 . .\install.ps1
@@ -284,26 +238,13 @@ helm delete e4k ; kubectl patch brokers/dmqttbroker -p '{"metadata":{"finalizers
 ## Situations to Test
 
 ```bash
-# Get frontend IP to use for testing
-export FRONTEND_IP=$(kubectl get services | grep frontend | awk '{print $3}')
+# Latency
+./emqtt_bench pub -c 1000 -h 10.0.0.4 -t bench/%i -I 2000 -s 0 -q 1 -F 16 -w true -i 1 --min-random-wait 2000 --max-random-wait 7000 --payload-hdrs ts
 
-# Backlog of messages to sustained session
+# Throughput
+./emqtt_bench pub -c 1000 -h 10.0.0.4 -t bench/%i -I 1000 -s 16 -q 1 -F 16 --min-random-wait 2000 --max-random-wait 7000 -w true
 
-# Connect with persistent session
-mosquitto_sub -q 1 -t "#" -i sub_2 -d -V mqttv5 -h $FRONTEND_IP -c
-
-# Send a bunch of messages, which should eventually get rejected
-mosquitto_pub -t test -d -h $FRONTEND_IP -q 1 -m <1 Kb payload> --repeat 1000000 -V mqttv5
-
-# Dummy subscriber which should get rejected
-mosquitto_sub -q 1 -t "test" -i dummy -d -V mqttv5 -h $FRONTEND_IP
-
-mosquitto_pub -t test -d -h $FRONTEND_IP -q 1 -i pubber -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --repeat 1000000 -V mqttv5 -c
-```
-
-```
-# 1KB payload
-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+./emqtt_bench sub -c 100 -h 10.0.0.4 -t "#" -q 1 --payload-hdrs ts
 ```
 
 ## Get Support Bundle
@@ -317,11 +258,19 @@ scp -F ~/keys/config dwalton@stress-1:~/bundle.zip .
 ### Creating labels for nodes
 
 ```bash
+# Individual labels
 kubectl label nodes stress-1 nodeid=stress-1
 kubectl label nodes stress-2 nodeid=stress-2
 kubectl label nodes stress-3 nodeid=stress-3
 kubectl label nodes stress-4 nodeid=stress-4
 kubectl label nodes stress-5 nodeid=stress-5
+
+# Group labels
+kubectl label nodes stress-1 nodegroup=fronts
+kubectl label nodes stress-2 nodegroup=fronts
+kubectl label nodes stress-3 nodegroup=backs
+kubectl label nodes stress-4 nodegroup=backs
+kubectl label nodes stress-5 nodegroup=backs
 ```
 
 You can then use the Affinity in Rust to create an affinity option similar to the following:
@@ -344,6 +293,14 @@ affinity: Some(Affinity {
   pod_affinity: None,
   pod_anti_affinity: None,
 }),
+```
+
+Once you have that, you can use the [personal registry](#push-local-containers-to-registry) to pull your built images and deploy the custom affinity scenario.
+
+### See where pods were deployed
+
+```bash
+kubectl get pods -o wide
 ```
 
 ## My Personal Items
@@ -421,4 +378,29 @@ spec:
   enableTracing: true
   logLevel: debug,hyper=off,kube_client=off,tower=off,conhash=off,h2=off
   enableSelfCheck: false
+```
+
+## Stash
+
+```bash
+# Get frontend IP to use for testing
+export FRONTEND_IP=$(kubectl get services | grep frontend | awk '{print $3}')
+
+# Backlog of messages to sustained session
+
+# Connect with persistent session
+mosquitto_sub -q 1 -t "#" -i sub_2 -d -V mqttv5 -h $FRONTEND_IP -c
+
+# Send a bunch of messages, which should eventually get rejected
+mosquitto_pub -t test -d -h $FRONTEND_IP -q 1 -m <1 Kb payload> --repeat 1000000 -V mqttv5
+
+# Dummy subscriber which should get rejected
+mosquitto_sub -q 1 -t "test" -i dummy -d -V mqttv5 -h $FRONTEND_IP
+
+mosquitto_pub -t test -d -h $FRONTEND_IP -q 1 -i pubber -m aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --repeat 1000000 -V mqttv5 -c
+```
+
+```
+# 1KB payload
+aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 ```
